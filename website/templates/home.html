@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<select id="symbolDropdown" onchange="updateOptionsTable()">
+    <option value="">Select a symbol</option>
+</select>
+
+<select id="expiryDropdown" onchange="updateOptionsTable()">
+    <option value="">Select a symbol</option>
+</select>
+<a href="http://127.0.0.1:5000/futures">
+<button >Futures</button>
+</a>
+<div class="container">
+    <table id="optionsTable" class="responsive-table">
+        <thead>
+            <tr>
+                <th colspan="11">Calls</th>
+                <th rowspan="2">Strike</th>
+                <th colspan="10">Puts</th>
+            </tr>
+            <tr>
+                <th scope="col">Exp</th>
+                <th scope="col">OI</th>
+                <th scope="col">CHNG OI</th>
+                <th scope="col">VOLUME</th>
+                <th scope="col">IV</th>
+                <th scope="col">LTP</th>
+                <th scope="col">CHNG</th>
+                <th scope="col">BID QTY</th>
+                <th scope="col">BID</th>
+                <th scope="col">ASK</th>
+                <th scope="col">ASK QTY</th>
+                <th scope="col">BID QTY</th>
+                <th scope="col">BID</th>
+                <th scope="col">ASK</th>
+                <th scope="col">ASK QTY</th>
+                <th scope="col">CHNG</th>
+                <th scope="col">LTP</th>
+                <th scope="col">IV</th>
+                <th scope="col">VOLUME</th>
+                <th scope="col">CHNG OI</th>
+                <th scope="col">OI</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Data rows will be populated dynamically by JavaScript -->
+        </tbody>
+    </table>
+</div>
+
+
+<script>
+    // JavaScript function to fetch data for the dropdown options
+    function loadSymbols() {
+        fetch('/api/symbols')
+            .then(response => response.json())
+            .then(symbols => {
+                const symbolDropdown = document.querySelector('#symbolDropdown');
+                const existingSymbols = new Set();
+
+                // Save existing symbols in a Set for quick lookup
+                for (const option of symbolDropdown.options) {
+                    existingSymbols.add(option.value);
+                }
+
+                // Add new symbols to the dropdown if they don't already exist
+                symbols.forEach(symbol => {
+                    if (!existingSymbols.has(symbol)) {
+                        const option = document.createElement('option');
+                        option.textContent = symbol;
+                        option.value = symbol;
+                        symbolDropdown.appendChild(option);
+                    }
+                });
+                loadExpiryDates();
+                updateOptionsTable();
+
+                // Select the first symbol by default if there are no existing symbols
+                if (symbolDropdown.options.length > 0 && symbolDropdown.value === '') {
+                    symbolDropdown.value = symbolDropdown.options[0].value;
+                    // Trigger the onchange event to populate the table initially
+                    loadExpiryDates();
+                    updateOptionsTable();
+                }
+            })
+            .catch(error => console.error('Error fetching symbols:', error));
+    }
+
+
+
+
+    function loadExpiryDates() {
+        const symbol = document.querySelector('#symbolDropdown').value;
+        const expiryDropdown = document.querySelector('#expiryDropdown');
+        const existingExpiryDates = new Set();
+
+        // Save existing expiry dates in a Set for quick lookup
+        for (const option of expiryDropdown.options) {
+            existingExpiryDates.add(option.value);
+        }
+
+
+
+        // Fetch expiry dates for the selected symbol
+        fetch(`/api/expiry?symbol=${encodeURIComponent(symbol)}`)
+            .then(response => response.json())
+            .then(expiryDates => {
+                // Add new expiry dates to the dropdown if they don't already exist
+                expiryDates.forEach(expiryDate => {
+                    if (!existingExpiryDates.has(expiryDate)) {
+                        const option = document.createElement('option');
+                        option.textContent = expiryDate;
+                        option.value = expiryDate;
+                        expiryDropdown.appendChild(option);
+                    }
+                });
+            })
+            updateOptionsTable()
+            .catch(error => console.error('Error fetching expiry dates:', error));
+    }
+
+
+
+
+
+
+    // JavaScript function to fetch data for the table
+function updateOptionsTable() {
+    const selectedSymbol = document.querySelector('#symbolDropdown').value;
+    const selectedExpiry = document.querySelector('#expiryDropdown').value;
+    if (selectedSymbol) {
+        fetch(`/api/options?symbol=${selectedSymbol}&expiry=${selectedExpiry}`)
+            .then(response => response.json())
+            .then(data => {
+                const dataBody = document.querySelector('tbody');
+                dataBody.innerHTML = '';
+
+                data.forEach(option => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${option.exp}</td>
+                        <td>${option.c_oi}</td>
+                        <td>${option.c_changeoi}</td>
+                        <td>${option.c_volume}</td>
+                        <td>${option.c_iv}</td>
+                        <td>${option.c_ltp}</td>
+                        <td>${option.c_changecp}</td>
+                        <td>${option.c_bprice}</td>
+                        <td>${option.c_bquantity}</td>
+                        <td>${option.c_askp}</td>
+                        <td>${option.c_askq}</td>
+                        <td>${option.strike}</td>
+                        <td>${option.p_bprice}</td>
+                        <td>${option.p_bquantity}</td>
+                        <td>${option.p_askp}</td>
+                        <td>${option.p_askq}</td>
+                        <td>${option.p_changecp}</td>
+                        <td>${option.p_ltp}</td>
+                        <td>${option.p_iv}</td>
+                        <td>${option.p_volume}</td>
+                        <td>${option.p_changeoi}</td>
+                        <td>${option.p_oi}</td>
+                    `;
+                    dataBody.appendChild(row);
+                });
+            })
+            .catch(error => console.error('Error fetching options:', error));
+    }
+}
+    // Call the function initially to populate the dropdown
+    loadSymbols();
+
+    // Schedule the function to update the table every 2 seconds
+    setInterval(() => {
+    updateOptionsTable();
+    loadSymbols();
+    loadExpiryDates();//Fetch the underlying symbols periodically
+}, 2000);
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+{% endblock %}
